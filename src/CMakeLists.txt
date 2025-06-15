@@ -13,7 +13,8 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_library(XFML_LIB_STATIC STATIC FXML.cpp)
+add_library(XFML_LIB_STATIC STATIC FXML.cpp FXMLData.cpp)
+target_include_directories(XFML_LIB_STATIC PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 add_executable(FXML_TESTS tests.cpp)
 target_link_libraries(FXML_TESTS PRIVATE XFML_LIB_STATIC gtest_main)
