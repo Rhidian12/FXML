@@ -2,8 +2,21 @@
 
 namespace fxml
 {
-	void XMLDocument::AddTag(XMLTag const&& tag)
+	void XMLDocument::AddXMLElement(XMLElement const&& element)
 	{
-		m_tags.push_back(std::move(tag));
+		m_elements.push_back(element);
+	}
+
+	std::optional<std::reference_wrapper<const XMLTag>> XMLDocument::FindTag(std::string_view tag)
+	{
+		for (const XMLElement& element : m_elements)
+		{
+			if (element.tag.name == tag)
+			{
+				return std::cref(element.tag);
+			}
+		}
+
+		return std::nullopt;
 	}
 } // namespace fxml

@@ -3,6 +3,7 @@
 #include "FXMLData.h"
 
 #include <expected>
+#include <stack>
 #include <string_view>
 
 namespace fxml
@@ -33,6 +34,7 @@ namespace fxml
 		char* m_buffer = nullptr;
 		uint32_t m_bufferSize = 0;
 		uint32_t m_bufferPointer = 0;
+		std::stack<XMLElement> m_tags;
 
 	public:
 		~XMLParser();
@@ -49,6 +51,8 @@ namespace fxml
 		// =============================
 		// ====== PARSE FUNCTIONS ======
 		// =============================
-		//std::expected<XMLDocument, ErrorReason> ParseTag();
+		std::expected<void, ErrorReason> ParseDocument(XMLDocument& document, std::string_view const buffer, uint32_t bufferSize, uint32_t& bufferPointer);
+		std::expected<void, ErrorReason> ParseEndTag(XMLDocument& document, std::string_view buffer, uint32_t& bufferPointer);
+		std::expected<void, ErrorReason> ParseContent(XMLDocument& document, std::string_view buffer, uint32_t& bufferPointer);
 	};
 } // namespace fxml
