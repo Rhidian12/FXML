@@ -8,19 +8,23 @@
 
 namespace fxml
 {
-	struct XMLElement;
-
+	/*
+	<node name="FXML">
+		<child>This is content</child>
+		<foo><!--Comment!-->AndContent!</foo>
+	</node>
+	*/
 	struct XMLTag
 	{
 		std::string_view name;
 		std::map<std::string_view, std::string_view> attributes;
-		XMLElement* content = nullptr;
 	};
 
 	struct XMLElement
 	{
 		XMLTag tag;
 		std::vector<XMLTag> children;
+		std::string_view content;
 	};
 
 	class XMLDocument
