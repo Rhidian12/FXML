@@ -34,10 +34,10 @@ namespace fxml
 			}
 		};
 
-		std::expected<uint32_t, XMLError> GetFileSize(std::string_view filepath)
+		std::expected<size_t, XMLError> GetFileSize(std::string_view filepath)
 		{
 			std::error_code ec;
-			uint32_t const size = static_cast<uint32_t>(std::filesystem::file_size(filepath, ec));
+			size_t const size = std::filesystem::file_size(filepath, ec);
 
 			if (ec)
 			{
@@ -47,14 +47,15 @@ namespace fxml
 			return size;
 		}
 
-		std::pair<uint32_t, char> FindFirstChar(std::string_view const buffer, std::initializer_list<char> chars)
+		std::pair<size_t, char> FindFirstChar(std::string_view const buffer, std::initializer_list<char> chars, size_t offset = 0, bool reverse = false)
 		{
-			uint32_t min = static_cast<uint32_t>(std::string_view::npos);
+			size_t min = std::string_view::npos;
 			char foundChar;
 
 			for (char c : chars)
 			{
-				if (uint32_t const pos = static_cast<uint32_t>(buffer.find(c)); pos < min)
+				size_t const pos = reverse ? buffer.rfind(c, offset) : buffer.find(c, offset);
+				if (pos < min)
 				{
 					foundChar = c;
 					min = pos;
@@ -76,27 +77,27 @@ namespace fxml
 			return str.substr(strBegin, strEnd - strBegin + 1);
 		}
 
-		FORCE_INLINE std::expected<char, ErrorReason> SafeAccess(std::string_view str, uint32_t index)
+		FORCE_INLINE std::expected<char, ErrorReason> SafeAccess(std::string_view str, size_t index)
 		{
 			if (index >= str.size()) return std::unexpected{ ErrorReason::PARSE_ERROR };
 			return str[index];
 		}
 
-		FORCE_INLINE std::expected<uint32_t, ErrorReason> SafeFind(std::string_view str, char c, uint32_t offset = 0)
+		FORCE_INLINE std::expected<size_t, ErrorReason> SafeFind(std::string_view str, char c, size_t offset = 0)
 		{
 			size_t const pos = str.find(c, offset);
 			if (pos == std::string_view::npos) return std::unexpected{ ErrorReason::PARSE_ERROR };
-			return static_cast<uint32_t>(pos);
+			return pos;
 		}
 
-		FORCE_INLINE std::expected<uint32_t, ErrorReason> SafeFind(std::string_view str, std::string_view toFind, uint32_t offset = 0)
+		FORCE_INLINE std::expected<size_t, ErrorReason> SafeFind(std::string_view str, std::string_view toFind, size_t offset = 0)
 		{
 			size_t const pos = str.find(toFind, offset);
 			if (pos == std::string_view::npos) return std::unexpected{ ErrorReason::PARSE_ERROR };
-			return static_cast<uint32_t>(pos);
+			return pos;
 		}
 
-		FORCE_INLINE std::expected<uint32_t, ErrorReason> SafeFindList(std::string_view str, std::initializer_list<std::string_view> list, uint32_t offset = 0)
+		FORCE_INLINE std::expected<size_t, ErrorReason> SafeFindList(std::string_view str, std::initializer_list<std::string_view> list, size_t offset = 0)
 		{
 			size_t pos = std::string_view::npos;
 			for (std::string_view toFind : list)
@@ -105,16 +106,10 @@ namespace fxml
 				pos = std::min(found, pos);
 			}
 			if (pos == std::string_view::npos) return std::unexpected{ ErrorReason::PARSE_ERROR };
-			return static_cast<uint32_t>(pos);
+			return pos;
 		}
 
-		FORCE_INLINE std::expected<std::string_view, ErrorReason> SafeGet(std::string_view str, uint32_t nr)
-		{
-			if (nr >= str.size()) return std::unexpected{ ErrorReason::PARSE_ERROR };
-			return str.substr(0, nr);
-		}
-
-		FORCE_INLINE std::expected<std::string_view, ErrorReason> SafeGet(std::string_view str, uint32_t nr, uint32_t offset)
+		FORCE_INLINE std::expected<std::string_view, ErrorReason> SafeGet(std::string_view str, size_t nr, size_t offset = 0)
 		{
 			if (nr >= str.size()) return std::unexpected{ ErrorReason::PARSE_ERROR };
 			return str.substr(offset, nr);
@@ -132,33 +127,6 @@ namespace fxml
 
 			return true;
 		}
-
-		std::expected<XMLTag, XMLError> ParseStartTag(std::string_view const buffer, uint32_t& bufferPointer)
-		{
-			// Tags must start with <
-			if (SafeAccess(buffer, bufferPointer) != '<')
-			{
-				return std::unexpected{ XMLError{ErrorReason::PARSE_ERROR, "Expected <"} };
-			}
-
-			// Our 'rawTag' will look like <NAME [Attributes]
-			CHECK_EXPECTED(uint32_t, pos, SafeFind(buffer, '>', bufferPointer + 1), "Could not find closing bracket of start tag");
-			std::string_view const rawTag = buffer.substr(bufferPointer, pos - bufferPointer);
-
-			// Check for attributes ('='), closing bracket, or an empty-element tag
-			std::pair<uint32_t, char> p = FindFirstChar(rawTag, {'=', '>', '\\'});
-			if (p.first == std::string_view::npos)
-			{
-				return std::unexpected{ XMLError{ErrorReason::PARSE_ERROR, "Start tag is not properly closed"} };
-			}
-
-			XMLTag tag;
-			tag.name = rawTag.substr(1, p.first);
-
-			bufferPointer += static_cast<uint32_t>(rawTag.size()) + 1; // + 1 because 'rawTag' does not have the closing bracket
-
-			return tag;
-		}
 	} // namespace
 
 	XMLParser::~XMLParser()
@@ -172,7 +140,7 @@ namespace fxml
 
 	std::expected<XMLDocument, XMLError> XMLParser::Parse(std::string_view filepath)
 	{
-		return GetFileSize(filepath).and_then([this, filepath](uint32_t size)
+		return GetFileSize(filepath).and_then([this, filepath](size_t size)
 			{
 				m_bufferSize = size;
 				m_buffer = new char[m_bufferSize] {};
@@ -181,7 +149,7 @@ namespace fxml
 	}
 	std::expected<XMLDocument, XMLError> XMLParser::Parse(std::string_view filepath, Buffer const& buffer)
 	{
-		return GetFileSize(filepath).and_then([filepath, &buffer, this](uint32_t size) -> std::expected<void, XMLError>
+		return GetFileSize(filepath).and_then([filepath, &buffer, this](size_t size) -> std::expected<void, XMLError>
 			{
 				if (buffer.bufferSize < size)
 				{
@@ -218,7 +186,7 @@ namespace fxml
 		return doc;
 	}
 
-	std::expected<void, XMLError> XMLParser::ParseDocument(XMLDocument& document, std::string_view const buffer, uint32_t bufferSize, uint32_t& bufferPointer)
+	std::expected<void, XMLError> XMLParser::ParseDocument(XMLDocument& document, std::string_view const buffer, size_t bufferSize, size_t& bufferPointer)
 	{
 		while (bufferPointer < bufferSize)
 		{
@@ -238,14 +206,13 @@ namespace fxml
 			}
 			else if (start[0] == '<')
 			{
-				CHECK_EXPECTED_NO_TRANSFORM(XMLTag, startTag, ParseStartTag(buffer, bufferPointer));
-				m_tags.emplace(startTag);
+				CHECK_EXPECTED_VOID(ParseStartTag(document, buffer, bufferPointer));
 			}
 			else
 			{
 				if (IsFullyWhiteSpace(start))
 				{
-					bufferPointer += static_cast<uint32_t>(start.size());
+					bufferPointer += start.size();
 					continue;
 				}
 
@@ -254,14 +221,91 @@ namespace fxml
 					return std::unexpected{ XMLError{ErrorReason::PARSE_ERROR, "Trying to parse content when no start tag was parsed"} };
 				}
 
-				ParseContent(document, buffer, bufferPointer);
+				ParseContent(buffer, bufferPointer);
 			}
 		}
 
 		RETURN_OK();
 	}
 
-	std::expected<void, XMLError> XMLParser::ParseEndTag(XMLDocument& document, std::string_view buffer, uint32_t& bufferPointer)
+	std::expected<void, XMLError> XMLParser::ParseStartTag(XMLDocument &document, std::string_view const buffer, size_t &bufferPointer)
+	{
+		// Tags must start with <
+		if (SafeAccess(buffer, bufferPointer) != '<')
+		{
+			return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, "Expected <"}};
+		}
+
+		// Our 'rawTag' will look like <NAME [Attributes]
+		CHECK_EXPECTED(size_t, pos, SafeFind(buffer, '>', bufferPointer + 1), "Could not find closing bracket of start tag");
+		std::string_view const rawTag = buffer.substr(bufferPointer, pos - bufferPointer + 1); // + 1 to capture closing bracket as well
+
+		// Check for attributes ('=') or closing bracket
+		std::pair<size_t, char> p = FindFirstChar(rawTag, {'=', '>'});
+		if (p.first == std::string_view::npos)
+		{
+			return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, "Start tag is not properly closed"}};
+		}
+
+		CHECK_EXPECTED(char, c, SafeAccess(buffer, 1), "Start tag is malformed");
+		if (std::isspace(c))
+		{
+			return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, "Start tag is malformed"}};
+		}
+
+		XMLTag tag;
+		tag.name = rawTag.substr(1, FindFirstChar(rawTag, {'=', '>', ' ', '\t'}).first - 1);
+
+		size_t attrOffset{};
+		while (true)
+		{
+			size_t attrPos = rawTag.find('=', attrOffset);
+			if (attrPos == std::string_view::npos)
+			{
+				break;
+			}
+
+			// find left hand part of attribute
+			auto [leftHandPos, _c] = FindFirstChar(rawTag, {' ', '\t'}, attrPos, true);
+			if (leftHandPos == std::string_view::npos)
+			{
+				return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("Attribute in tag '{}' is malformed", tag.name)}};
+			}
+
+			// Find right hand part of attribute
+			auto [rightHandPos, _c2] = FindFirstChar(rawTag, {' ', '\t', '\\', '>'}, attrPos);
+			if (rightHandPos == std::string_view::npos)
+			{
+				return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("Attribute in tag '{}' is malformed", tag.name)}};
+			}
+
+			std::string_view const key = rawTag.substr(leftHandPos, attrPos - leftHandPos);
+			if (tag.attributes.contains(key))
+			{
+				return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("Attribute key '{}' already present in tag '{}'", key, tag.name)}};
+			}
+
+			std::string_view const value = rawTag.substr(attrPos + 1, rightHandPos);
+			tag.attributes.emplace(key, value);
+
+			attrOffset = attrPos + 1;
+		}
+
+		if (SafeGet(rawTag, 2, rawTag.size() - 2) == "/>")
+		{
+			document.AddXMLElement(XMLElement{.tag = std::move(tag), .children = {}, .content = ""});
+		}
+		else
+		{
+			m_tags.emplace(std::move(tag));
+		}
+
+		bufferPointer += rawTag.size();
+
+		RETURN_OK();
+	}
+
+	std::expected<void, XMLError> XMLParser::ParseEndTag(XMLDocument& document, std::string_view buffer, size_t& bufferPointer)
 	{
 		if (SafeAccess(buffer, bufferPointer) != '<')
 		{
@@ -269,7 +313,7 @@ namespace fxml
 		}
 
 		// Our 'rawTag' will look like </NAME
-		CHECK_EXPECTED(uint32_t, pos, SafeFind(buffer, '>', bufferPointer + 1), "End tag closing bracket could not be found");
+		CHECK_EXPECTED(size_t, pos, SafeFind(buffer, '>', bufferPointer + 1), "End tag closing bracket could not be found");
 		std::string_view const rawTag = buffer.substr(bufferPointer, pos - bufferPointer);
 
 		if (SafeAccess(buffer, bufferPointer + 1) != '/')
@@ -277,7 +321,7 @@ namespace fxml
 			return std::unexpected{ XMLError{ErrorReason::PARSE_ERROR, "End tag must start with '</'"} };
 		}
 
-		bufferPointer += static_cast<uint32_t>(rawTag.size()) + 1; // + 1 because 'rawTag' does not have the closing bracket
+		bufferPointer += rawTag.size() + 1; // + 1 because 'rawTag' does not have the closing bracket
 
 		if (m_tags.top().tag.name != rawTag.substr(2))
 		{
@@ -290,15 +334,15 @@ namespace fxml
 		RETURN_OK();
 	}
 
-	std::expected<void, XMLError> XMLParser::ParseContent(XMLDocument& document, std::string_view buffer, uint32_t& bufferPointer)
+	std::expected<void, XMLError> XMLParser::ParseContent(std::string_view buffer, size_t& bufferPointer)
 	{
 		// Search until the next node
-		CHECK_EXPECTED(uint32_t, pos, SafeFind(buffer, '<', bufferPointer + 1), "No end tag found for content");
+		CHECK_EXPECTED(size_t, pos, SafeFind(buffer, '<', bufferPointer + 1), "No end tag found for content");
 
 		std::string_view const content = buffer.substr(bufferPointer, pos - bufferPointer);
 		m_tags.top().content = content;
 
-		bufferPointer += static_cast<uint32_t>(content.size());
+		bufferPointer += content.size();
 
 		RETURN_OK();
 	}
