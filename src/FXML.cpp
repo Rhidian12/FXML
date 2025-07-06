@@ -52,7 +52,10 @@ namespace fxml
     {
       std::function<void()> onExit;
 
-      ~OnExitScope() { onExit(); }
+      ~OnExitScope()
+      {
+        onExit();
+      }
     };
 
     std::expected<size_t, XMLError> GetFileSize(std::string_view filepath)
@@ -86,17 +89,17 @@ namespace fxml
       return {min, foundChar};
     }
 
-    std::string_view TrimWhitespace(std::string_view str)
-    {
-      size_t const strBegin{str.find_first_not_of(" \t")};
-      if (strBegin == std::string_view::npos)
-      {
-        return "";
-      }
+    // std::string_view TrimWhitespace(std::string_view str)
+    // {
+    //   size_t const strBegin{str.find_first_not_of(" \t")};
+    //   if (strBegin == std::string_view::npos)
+    //   {
+    //     return "";
+    //   }
 
-      size_t const strEnd{str.find_last_not_of(" \t")};
-      return str.substr(strBegin, strEnd - strBegin + 1);
-    }
+    //   size_t const strEnd{str.find_last_not_of(" \t")};
+    //   return str.substr(strBegin, strEnd - strBegin + 1);
+    // }
 
     FORCE_INLINE std::expected<char, ErrorReason> SafeAccess(std::string_view str, size_t index)
     {
@@ -204,15 +207,20 @@ namespace fxml
     }
 
     XMLDocument doc;
-    if (auto const ret = ParseDocument(doc, m_buffer, m_bufferSize, m_bufferPointer); !ret.has_value())
+    if (auto const ret = ParseDocument(m_buffer, m_bufferSize, m_bufferPointer); !ret.has_value())
     {
       return std::unexpected{ret.error()};
+    }
+
+    for (size_t i{}; i < m_elements.size(); ++i)
+    {
+      doc.AddXMLElement(std::move(m_elements[i]), false);
     }
 
     return doc;
   }
 
-  std::expected<void, XMLError> XMLParser::ParseDocument(XMLDocument& document, std::string_view const buffer, size_t bufferSize, size_t& bufferPointer)
+  std::expected<void, XMLError> XMLParser::ParseDocument(std::string_view const buffer, size_t bufferSize, size_t& bufferPointer)
   {
     while (bufferPointer < bufferSize)
     {
@@ -223,16 +231,16 @@ namespace fxml
       }
       else if (start == "</")
       {
-        if (m_tags.empty())
+        if (m_elementStack.empty())
         {
           return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, "End tag reached while no start tag was parsed"}};
         }
 
-        CHECK_EXPECTED_VOID(ParseEndTag(document, buffer, bufferPointer));
+        CHECK_EXPECTED_VOID(ParseEndTag(buffer, bufferPointer));
       }
       else if (start[0] == '<')
       {
-        CHECK_EXPECTED_VOID(ParseStartTag(document, buffer, bufferPointer));
+        CHECK_EXPECTED_VOID(ParseStartTag(buffer, bufferPointer));
       }
       else
       {
@@ -242,7 +250,7 @@ namespace fxml
           continue;
         }
 
-        if (m_tags.empty())
+        if (m_elementStack.empty())
         {
           return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, "Trying to parse content when no start tag was parsed"}};
         }
@@ -254,7 +262,7 @@ namespace fxml
     RETURN_OK();
   }
 
-  std::expected<void, XMLError> XMLParser::ParseStartTag(XMLDocument& document, std::string_view const buffer, size_t& bufferPointer)
+  std::expected<void, XMLError> XMLParser::ParseStartTag(std::string_view const buffer, size_t& bufferPointer)
   {
     // Tags must start with <
     if (SafeAccess(buffer, bufferPointer) != '<')
@@ -319,11 +327,12 @@ namespace fxml
 
     if (SafeGet(rawTag, 2, rawTag.size() - 2) == "/>")
     {
-      document.AddXMLElement(XMLElement{.tag = std::move(tag), .children = {}, .content = ""});
+      m_elements.push_back(XMLElement{.tag = std::move(tag), .children = {}, .content = ""});
     }
     else
     {
-      m_tags.emplace(std::move(tag));
+      m_elements.push_back(XMLElement{.tag = std::move(tag), .children = {}, .content = ""});
+      m_elementStack.emplace(std::move(tag));
     }
 
     bufferPointer += rawTag.size();
@@ -331,7 +340,7 @@ namespace fxml
     RETURN_OK();
   }
 
-  std::expected<void, XMLError> XMLParser::ParseEndTag(XMLDocument& document, std::string_view buffer, size_t& bufferPointer)
+  std::expected<void, XMLError> XMLParser::ParseEndTag(std::string_view buffer, size_t& bufferPointer)
   {
     if (SafeAccess(buffer, bufferPointer) != '<')
     {
@@ -349,13 +358,13 @@ namespace fxml
 
     bufferPointer += rawTag.size() + 1;  // + 1 because 'rawTag' does not have the closing bracket
 
-    if (m_tags.top().tag.name != rawTag.substr(2))
+    if (m_elementStack.top().tag.name != rawTag.substr(2))
     {
       return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("No matching start tag found for end tag '{}'", rawTag.substr(2))}};
     }
 
-    document.AddXMLElement(std::move(m_tags.top()));
-    m_tags.pop();
+    *(std::ranges::find_if(m_elements, [rawTag](XMLElement const& element) { return element.tag.name == rawTag.substr(2); })) = m_elementStack.top();
+    m_elementStack.pop();
 
     RETURN_OK();
   }
@@ -366,7 +375,7 @@ namespace fxml
     CHECK_EXPECTED(size_t, pos, SafeFind(buffer, '<', bufferPointer + 1), "No end tag found for content");
 
     std::string_view const content = buffer.substr(bufferPointer, pos - bufferPointer);
-    m_tags.top().content = content;
+    m_elementStack.top().content = content;
 
     bufferPointer += content.size();
 

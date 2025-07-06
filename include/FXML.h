@@ -26,9 +26,15 @@ namespace fxml
    public:
     XMLError(ErrorReason reason, std::string message) : m_message(message), m_errorReason(reason) {}
 
-    inline std::string const& what() const { return m_message; }
+    inline std::string const& what() const
+    {
+      return m_message;
+    }
 
-    inline ErrorReason reason() const { return m_errorReason; }
+    inline ErrorReason reason() const
+    {
+      return m_errorReason;
+    }
   };
 
   struct Buffer
@@ -45,7 +51,8 @@ namespace fxml
     char* m_buffer = nullptr;
     size_t m_bufferSize = 0;
     size_t m_bufferPointer = 0;
-    std::stack<XMLElement> m_tags;
+    std::stack<XMLElement> m_elementStack;
+    std::vector<XMLElement> m_elements;
 
    public:
     ~XMLParser();
@@ -62,9 +69,9 @@ namespace fxml
     // =============================
     // ====== PARSE FUNCTIONS ======
     // =============================
-    std::expected<void, XMLError> ParseDocument(XMLDocument& document, std::string_view const buffer, size_t bufferSize, size_t& bufferPointer);
-    std::expected<void, XMLError> ParseStartTag(XMLDocument& document, std::string_view const buffer, size_t& bufferPointer);
-    std::expected<void, XMLError> ParseEndTag(XMLDocument& document, std::string_view buffer, size_t& bufferPointer);
+    std::expected<void, XMLError> ParseDocument(std::string_view const buffer, size_t bufferSize, size_t& bufferPointer);
+    std::expected<void, XMLError> ParseStartTag(std::string_view const buffer, size_t& bufferPointer);
+    std::expected<void, XMLError> ParseEndTag(std::string_view buffer, size_t& bufferPointer);
     std::expected<void, XMLError> ParseContent(std::string_view buffer, size_t& bufferPointer);
   };
 }  // namespace fxml

@@ -23,18 +23,25 @@ namespace fxml
   struct XMLElement
   {
     XMLTag tag;
-    std::vector<XMLTag> children;
+    std::vector<XMLElement> children;
     std::string_view content;
   };
 
   class XMLDocument
   {
    private:
+    friend class XMLParser;
+
+   private:
     std::vector<XMLElement> m_elements;
 
    public:
-    void AddXMLElement(XMLElement const&& element);
+    std::optional<std::reference_wrapper<XMLElement const>> GetNodeByName(std::string_view tagName);
+    std::optional<std::reference_wrapper<XMLElement const>> GetNodeByIndex(uint32_t index) const;
 
-    std::optional<std::reference_wrapper<XMLTag const>> FindTag(std::string_view tag);
+    size_t GetNrOfNodes() const;
+
+   private:
+    void AddXMLElement(XMLElement const&& element, bool front);
   };
 }  // namespace fxml

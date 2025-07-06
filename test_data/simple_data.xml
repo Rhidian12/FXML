@@ -6,10 +6,3 @@
 	</node_two>
 	<node_three city="Kortrijk"/>
 </root>
-
-<note>
-<to>Tove</to>
-<from>Jani</from>
-<heading>Reminder</heading>
-<body>Don't forget me this weekend!</body>
-</note>
