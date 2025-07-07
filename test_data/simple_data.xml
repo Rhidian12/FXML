@@ -1,6 +1,6 @@
 <root>
 	<node_one>This is an XML Parser</node_one>
-	<node_two>
+	<node_two empty_attribute="" another_attribute="Some Data">
 		<name>Rhidian</name>
 		<country>Belgium</country>
 	</node_two>

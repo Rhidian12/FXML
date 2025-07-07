@@ -305,26 +305,31 @@ namespace fxml
       }
 
       // find left hand part of attribute
-      auto [leftHandPos, _c] = FindFirstChar(rawTag, {' ', '\t'}, attrPos, true);
-      if (leftHandPos == std::string_view::npos)
+      auto [leftHandPosStart, _c] = FindFirstChar(rawTag, {' ', '\t'}, attrPos, true);
+      auto [leftHandPosEnd, _c2] = FindFirstChar(rawTag, {' ', '\t', '='}, leftHandPosStart + 1);
+      if (leftHandPosStart == std::string_view::npos || leftHandPosEnd == std::string_view::npos)
       {
         return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("Attribute in tag '{}' is malformed", tag.name)}};
       }
 
       // Find right hand part of attribute
-      auto [rightHandPos, _c2] = FindFirstChar(rawTag, {' ', '\t', '\\', '>'}, attrPos);
-      if (rightHandPos == std::string_view::npos)
+      auto [rightHandPosStart, _c3] = FindFirstChar(rawTag, {'"'}, attrPos);
+      auto [rightHandPosEnd, _c4] = FindFirstChar(rawTag, {'"'}, rightHandPosStart + 1);
+      if (rightHandPosEnd == std::string_view::npos || rightHandPosEnd == std::string_view::npos)
       {
         return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("Attribute in tag '{}' is malformed", tag.name)}};
       }
 
-      std::string_view const key = rawTag.substr(leftHandPos, attrPos - leftHandPos);
+      // 'leftHandPos' starts at the character right before the key, so we must do + 1 to get the actual start of they key
+      // We have to do - 1 in the length to subtract the '=' part of the attribute
+      std::string_view const key = rawTag.substr(leftHandPosStart + 1, leftHandPosEnd - leftHandPosStart - 1);
       if (tag.attributes.contains(key))
       {
         return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("Attribute key '{}' already present in tag '{}'", key, tag.name)}};
       }
 
-      std::string_view const value = rawTag.substr(attrPos + 1, rightHandPos);
+      // At the end, we do - 1 because 'rightHandPosEnd' takes the terminating '"' into account
+      std::string_view const value = rawTag.substr(rightHandPosStart + 1, rightHandPosEnd - rightHandPosStart - 1);
       tag.attributes.emplace(key, value);
 
       attrOffset = attrPos + 1;

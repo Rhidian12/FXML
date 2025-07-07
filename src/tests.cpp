@@ -48,4 +48,12 @@ TEST_F(FXMLTests, testParseSimpleFile)
   EXPECT_TRUE(doc.GetNodeByName("root").value().get().GetRawContent().empty());
   EXPECT_TRUE(doc.GetNodeByName("node_two").value().get().GetRawContent().empty());
   EXPECT_TRUE(doc.GetNodeByName("node_three").value().get().GetRawContent().empty());
+
+  // Check attributes
+  EXPECT_TRUE(doc.GetNodeByName("node_two").value().get().GetTag().attributes.contains("empty_attribute"));
+  EXPECT_NO_THROW(EXPECT_TRUE(doc.GetNodeByName("node_two").value().get().GetTag().attributes.at("empty_attribute").empty()));
+  EXPECT_TRUE(doc.GetNodeByName("node_two").value().get().GetTag().attributes.contains("another_attribute"));
+  EXPECT_NO_THROW(EXPECT_EQ(doc.GetNodeByName("node_two").value().get().GetTag().attributes.at("another_attribute"), "Some Data"));
+  EXPECT_TRUE(doc.GetNodeByName("node_three").value().get().GetTag().attributes.contains("city"));
+  EXPECT_NO_THROW(EXPECT_EQ(doc.GetNodeByName("node_three").value().get().GetTag().attributes.at("city"), "Kortrijk"));
 }
