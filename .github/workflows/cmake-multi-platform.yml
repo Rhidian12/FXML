@@ -54,9 +54,28 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
+    - name: Install libc++
+      if: matrix.cpp_compiler == 'clang++'
+      run: |
+        sudo apt-get update
+        sudo apt-get install libc++-dev libc++abi-dev
+
+    - name: Configure CMake (Clang + libstdc++ 13)
+      if: matrix.cpp_compiler == 'clang++'
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DCMAKE_CXX_COMPILER=clang++
+        -DCMAKE_C_COMPILER=clang
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DCMAKE_CXX_STANDARD=23
+        -DCMAKE_CXX_FLAGS="-stdlib=libc++ -std=c++23"
+        -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++"
+        -S ${{ github.workspace }}
+
+    - name: Configure CMake for non-Clang compilers
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+      if: matrix.cpp_compiler != 'clang++'
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
