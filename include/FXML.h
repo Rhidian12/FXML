@@ -81,5 +81,6 @@ namespace fxml
     std::expected<void, XMLError> ParseStartTag(std::string_view const buffer, size_t& bufferPointer);
     std::expected<void, XMLError> ParseEndTag(std::string_view buffer, size_t& bufferPointer);
     std::expected<void, XMLError> ParseContent(std::string_view buffer, size_t& bufferPointer);
+    std::expected<void, XMLError> ParseComment(std::string_view buffer, size_t& bufferPointer);
   };
 }  // namespace fxml

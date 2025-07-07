@@ -114,12 +114,12 @@ namespace fxml
       return pos;
     }
 
-    // FORCE_INLINE std::expected<size_t, ErrorReason> SafeFind(std::string_view str, std::string_view toFind, size_t offset = 0)
-    // {
-    //   size_t const pos = str.find(toFind, offset);
-    //   if (pos == std::string_view::npos) return std::unexpected{ErrorReason::PARSE_ERROR};
-    //   return pos;
-    // }
+    FORCE_INLINE std::expected<size_t, ErrorReason> SafeFind(std::string_view str, std::string_view toFind, size_t offset = 0)
+    {
+      size_t const pos = str.find(toFind, offset);
+      if (pos == std::string_view::npos) return std::unexpected{ErrorReason::PARSE_ERROR};
+      return pos;
+    }
 
     // FORCE_INLINE std::expected<size_t, ErrorReason> SafeFindList(std::string_view str, std::initializer_list<std::string_view> list, size_t offset = 0)
     // {
@@ -232,7 +232,7 @@ namespace fxml
       CHECK_EXPECTED(std::string_view, start, SafeGet(buffer, 2, bufferPointer), "EOF reached while parsing, file seems incomplete");
       if (start == "<!")
       {
-        // [TODO]: Parse Comment
+        CHECK_EXPECTED_VOID(ParseComment(buffer, bufferPointer));
       }
       else if (start == "</")
       {
@@ -387,6 +387,19 @@ namespace fxml
     m_elementStack.top().SetRawContent(content);
 
     bufferPointer += content.size();
+
+    RETURN_OK();
+  }
+
+  std::expected<void, XMLError> XMLParser::ParseComment(std::string_view buffer, size_t& bufferPointer)
+  {
+    // Search until the end of the comment
+    CHECK_EXPECTED(size_t, end, SafeFind(buffer, "-->", bufferPointer + 1), "Comment is not closed");
+
+    // + 3 for '-->'
+    std::string_view const comment = buffer.substr(bufferPointer, end - bufferPointer + 3);
+
+    bufferPointer += comment.size();
 
     RETURN_OK();
   }
