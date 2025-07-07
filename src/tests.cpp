@@ -36,11 +36,16 @@ TEST_F(FXMLTests, testParseSimpleFile)
   // Check the Tags
   for (size_t i{}; i < doc.GetNrOfNodes(); ++i)
   {
-    EXPECT_EQ(doc.GetNodeByIndex(i).value().get().tag.name, SIMPLE_DATA_NODE_NAMES[i]);
+    EXPECT_EQ(doc.GetNodeByIndex(i).value().get().GetTag().name, SIMPLE_DATA_NODE_NAMES[i]);
   }
 
   // Check content
-  EXPECT_EQ(doc.GetNodeByName("node_one").value().get().content, "This is an XML Parser");
-  EXPECT_EQ(doc.GetNodeByName("name").value().get().content, "Rhidian");
-  EXPECT_EQ(doc.GetNodeByName("country").value().get().content, "Belgium");
+  EXPECT_EQ(doc.GetNodeByName("node_one").value().get().GetRawContent(), "This is an XML Parser");
+  EXPECT_EQ(doc.GetNodeByName("name").value().get().GetRawContent(), "Rhidian");
+  EXPECT_EQ(doc.GetNodeByName("country").value().get().GetRawContent(), "Belgium");
+
+  // Check lack of content
+  EXPECT_TRUE(doc.GetNodeByName("root").value().get().GetRawContent().empty());
+  EXPECT_TRUE(doc.GetNodeByName("node_two").value().get().GetRawContent().empty());
+  EXPECT_TRUE(doc.GetNodeByName("node_three").value().get().GetRawContent().empty());
 }

@@ -20,11 +20,24 @@ namespace fxml
     std::map<std::string_view, std::string_view> attributes;
   };
 
-  struct XMLElement
+  class XMLElement
   {
-    XMLTag tag;
-    std::vector<XMLElement> children;
-    std::string_view content;
+   private:
+    friend class XMLParser;
+
+   private:
+    XMLTag m_tag;
+    std::vector<XMLElement> m_children;
+    std::string_view m_rawContent;
+
+   public:
+    XMLTag const& GetTag() const;
+    std::string_view GetRawContent() const;
+
+   private:
+    XMLElement(XMLTag const&& tag);
+
+    void SetRawContent(std::string_view content);
   };
 
   class XMLDocument

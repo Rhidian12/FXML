@@ -224,6 +224,11 @@ namespace fxml
   {
     while (bufferPointer < bufferSize)
     {
+      while (std::isspace(buffer[bufferPointer]) && bufferPointer < bufferSize)
+      {
+        ++bufferPointer;
+      }
+
       CHECK_EXPECTED(std::string_view, start, SafeGet(buffer, 2, bufferPointer), "EOF reached while parsing, file seems incomplete");
       if (start == "<!")
       {
@@ -325,14 +330,13 @@ namespace fxml
       attrOffset = attrPos + 1;
     }
 
-    if (SafeGet(rawTag, 2, rawTag.size() - 2) == "/>")
+    // Always add the start tag in-order in our list of elements
+    m_elements.push_back(XMLElement{std::move(tag)});
+
+    // If not an empty-element tag, put it in our stack so it can be used later for endtag/content matching
+    if (SafeGet(rawTag, 2, rawTag.size() - 2) != "/>")
     {
-      m_elements.push_back(XMLElement{.tag = std::move(tag), .children = {}, .content = ""});
-    }
-    else
-    {
-      m_elements.push_back(XMLElement{.tag = std::move(tag), .children = {}, .content = ""});
-      m_elementStack.emplace(std::move(tag));
+      m_elementStack.emplace(XMLElement{std::move(tag)});
     }
 
     bufferPointer += rawTag.size();
@@ -358,12 +362,12 @@ namespace fxml
 
     bufferPointer += rawTag.size() + 1;  // + 1 because 'rawTag' does not have the closing bracket
 
-    if (m_elementStack.top().tag.name != rawTag.substr(2))
+    if (m_elementStack.top().GetTag().name != rawTag.substr(2))
     {
       return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, std::format("No matching start tag found for end tag '{}'", rawTag.substr(2))}};
     }
 
-    *(std::ranges::find_if(m_elements, [rawTag](XMLElement const& element) { return element.tag.name == rawTag.substr(2); })) = m_elementStack.top();
+    *(std::ranges::find_if(m_elements, [rawTag](XMLElement const& element) { return element.GetTag().name == rawTag.substr(2); })) = m_elementStack.top();
     m_elementStack.pop();
 
     RETURN_OK();
@@ -375,7 +379,7 @@ namespace fxml
     CHECK_EXPECTED(size_t, pos, SafeFind(buffer, '<', bufferPointer + 1), "No end tag found for content");
 
     std::string_view const content = buffer.substr(bufferPointer, pos - bufferPointer);
-    m_elementStack.top().content = content;
+    m_elementStack.top().SetRawContent(content);
 
     bufferPointer += content.size();
 

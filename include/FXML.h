@@ -24,7 +24,11 @@ namespace fxml
     ErrorReason m_errorReason;
 
    public:
-    XMLError(ErrorReason reason, std::string message) : m_message(message), m_errorReason(reason) {}
+    XMLError(ErrorReason reason, std::string message)
+      : m_message(message)
+      , m_errorReason(reason)
+    {
+    }
 
     inline std::string const& what() const
     {
@@ -42,7 +46,11 @@ namespace fxml
     char* buffer;
     size_t bufferSize;
 
-    explicit Buffer(char* _buffer, size_t _bufferSize) : buffer(_buffer), bufferSize(_bufferSize) {}
+    explicit Buffer(char* _buffer, size_t _bufferSize)
+      : buffer(_buffer)
+      , bufferSize(_bufferSize)
+    {
+    }
   };
 
   class XMLParser

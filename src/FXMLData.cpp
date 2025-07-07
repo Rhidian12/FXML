@@ -2,6 +2,28 @@
 
 namespace fxml
 {
+  XMLElement::XMLElement(XMLTag const&& tag)
+    : m_tag(std::move(tag))
+    , m_children()
+    , m_rawContent()
+  {
+  }
+
+  void XMLElement::SetRawContent(std::string_view content)
+  {
+    m_rawContent = content;
+  }
+
+  XMLTag const& XMLElement::GetTag() const
+  {
+    return m_tag;
+  }
+
+  std::string_view XMLElement::GetRawContent() const
+  {
+    return m_rawContent;
+  }
+
   void XMLDocument::AddXMLElement(XMLElement const&& element, bool front)
   {
     if (front)
@@ -18,7 +40,7 @@ namespace fxml
   {
     for (XMLElement const& element : m_elements)
     {
-      if (element.tag.name == tagName)
+      if (element.GetTag().name == tagName)
       {
         return element;
       }
