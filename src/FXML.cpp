@@ -260,7 +260,7 @@ namespace fxml
           return std::unexpected{XMLError{ErrorReason::PARSE_ERROR, "Trying to parse content when no start tag was parsed"}};
         }
 
-        ParseContent(buffer, bufferPointer);
+        CHECK_EXPECTED_VOID(ParseContent(buffer, bufferPointer));
       }
     }
 
