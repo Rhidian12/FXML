@@ -74,7 +74,7 @@ namespace fxml
     std::pair<size_t, char> FindFirstChar(std::string_view const buffer, std::initializer_list<char> chars, size_t offset = 0, bool reverse = false)
     {
       size_t min = std::string_view::npos;
-      char foundChar;
+      char foundChar = '\0';
 
       for (char c : chars)
       {
@@ -114,24 +114,24 @@ namespace fxml
       return pos;
     }
 
-    FORCE_INLINE std::expected<size_t, ErrorReason> SafeFind(std::string_view str, std::string_view toFind, size_t offset = 0)
-    {
-      size_t const pos = str.find(toFind, offset);
-      if (pos == std::string_view::npos) return std::unexpected{ErrorReason::PARSE_ERROR};
-      return pos;
-    }
+    // FORCE_INLINE std::expected<size_t, ErrorReason> SafeFind(std::string_view str, std::string_view toFind, size_t offset = 0)
+    // {
+    //   size_t const pos = str.find(toFind, offset);
+    //   if (pos == std::string_view::npos) return std::unexpected{ErrorReason::PARSE_ERROR};
+    //   return pos;
+    // }
 
-    FORCE_INLINE std::expected<size_t, ErrorReason> SafeFindList(std::string_view str, std::initializer_list<std::string_view> list, size_t offset = 0)
-    {
-      size_t pos = std::string_view::npos;
-      for (std::string_view toFind : list)
-      {
-        size_t const found = str.find(toFind, offset);
-        pos = std::min(found, pos);
-      }
-      if (pos == std::string_view::npos) return std::unexpected{ErrorReason::PARSE_ERROR};
-      return pos;
-    }
+    // FORCE_INLINE std::expected<size_t, ErrorReason> SafeFindList(std::string_view str, std::initializer_list<std::string_view> list, size_t offset = 0)
+    // {
+    //   size_t pos = std::string_view::npos;
+    //   for (std::string_view toFind : list)
+    //   {
+    //     size_t const found = str.find(toFind, offset);
+    //     pos = std::min(found, pos);
+    //   }
+    //   if (pos == std::string_view::npos) return std::unexpected{ErrorReason::PARSE_ERROR};
+    //   return pos;
+    // }
 
     FORCE_INLINE std::expected<std::string_view, ErrorReason> SafeGet(std::string_view str, size_t nr, size_t offset = 0)
     {
@@ -176,7 +176,7 @@ namespace fxml
   {
     return GetFileSize(filepath)
         .and_then(
-            [filepath, &buffer, this](size_t size) -> std::expected<void, XMLError>
+            [&buffer](size_t size) -> std::expected<void, XMLError>
             {
               if (buffer.bufferSize < size)
               {
